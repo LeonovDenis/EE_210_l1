@@ -5,6 +5,8 @@
  */
 package demo;
 
+import demo.jax.*;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.logging.Level;
@@ -14,6 +16,10 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -26,6 +32,7 @@ import org.xml.sax.SAXException;
 @WebServlet(name = "Check", urlPatterns = {"/Check"})
 public class Check extends HttpServlet {
 
+    private boolean flag;
     private String fileName = "";
     private String otvet = "";
     private String name = "";
@@ -49,10 +56,16 @@ public class Check extends HttpServlet {
 
         switch (zapros) {
             case "Check_SAX":
+                flag = false;
                 goSAX(name);
                 break;
             case "Check_DOM":
+                flag = false;
                 goDOM(name, fileName);
+                break;
+            case "Check_JaxB":
+                flag = true;
+                goJaxB(fileName);
                 break;
             default:
                 otvet = "Что-то пошло нетак.";
@@ -75,7 +88,14 @@ public class Check extends HttpServlet {
             out.println("<table border=\"0\" cellpadding=\"5\" cellspacing=\"5\">");
             out.println("<thead>");
             out.println("<tr>");
-            out.println("<th colspan=\"2\">Поиск тега \"" + name + "\" методом "+zapros.substring(6, 9)+".</th>");
+            out.println("<th colspan=\"2\">");
+            if (flag) {
+                out.println("Чтение с помощью JaxB");
+
+            } else {
+                out.println("Поиск тега \"" + name + "\" методом " + zapros.substring(6, 9) + ".");
+            }
+            out.println(" \"</th>");
             out.println(" </tr>");
             out.println("</thead>");
             out.println("<tbody>");
@@ -154,6 +174,26 @@ public class Check extends HttpServlet {
         demoDOM.init();
         otvet = demoDOM.find();
 
+    }
+
+    private void goJaxB(String fileName) {
+
+        try {
+            JAXBContext context = JAXBContext.newInstance(UserList.class);
+            Marshaller marshaller = context.createMarshaller();
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+            Unmarshaller unmarshaller = context.createUnmarshaller();
+            Object o = unmarshaller.unmarshal(new File(fileName));
+            UserList list = (UserList) o;
+            StringBuilder sb = new StringBuilder();
+            sb.append("Objects created from XML:<BR><ol>");
+            for (User user : list.getUserList()) {
+                sb.append("<li>"+user + "<BR></li>");
+            }
+            otvet = sb.append("</ol>").toString();
+        } catch (JAXBException ex) {
+            Logger.getLogger(Check.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
 }
